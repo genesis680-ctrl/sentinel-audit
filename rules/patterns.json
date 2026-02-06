@@ -1,0 +1,10 @@
+{
+  "cpf": {
+    "regex": "(\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}|\\d{11})",
+    "description": "CPF formatado ou digitos"
+  },
+  "email": {
+    "regex": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+    "description": "Endereços de e-mail expostos"
+  }
+}

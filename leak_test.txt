@@ -1,0 +1,4 @@
+Relatório de Usuários:
+Fulano: 529.982.247-25
+Contato: andre_dev_test@gmail.com
+Invalido: 123.123.123-12
