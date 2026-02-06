@@ -1,6 +1,7 @@
 import re
 import json
 from engine.auditor import process_match
+from utils.extractor import extract_text
 
 class DocumentProcessor:
     def __init__(self, rules_path):
@@ -9,16 +10,21 @@ class DocumentProcessor:
 
     def scan_file(self, file_path):
         findings = []
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
+        
+        # 1. Extração Inteligente (Aqui está a mágica da V2.0)
+        content = extract_text(file_path)
 
-        # Itera sobre as regras definidas no patterns.json
+        if not content:
+            return []
+
+        # 2. Varredura com Regex
         for label, rule_data in self.rules.items():
             pattern = rule_data['regex']
-            matches = re.findall(pattern, content)
+            
+            # Regex multiline ajuda em textos extraídos de PDF
+            matches = re.findall(pattern, content, re.MULTILINE)
             
             for m in matches:
-                # Agora passamos o dado e o label (ex: "cpf")
                 result = process_match(m, label)
                 if result.get('valid'):
                     findings.append({

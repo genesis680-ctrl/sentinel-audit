@@ -1,26 +1,34 @@
-import re
-import requests
-from urllib.parse import urljoin
+import os
+from pypdf import PdfReader
 
-class LinkExtractor:
-    @staticmethod
-    def get_pdf_links(target_url):
-        """Varre uma pagina HTML em busca de links para arquivos PDF."""
-        print(f"[*] Escaneando pagina em busca de PDFs: {target_url}")
-        pdf_links = []
+def extract_text(file_path):
+    """
+    Extrai texto limpo de arquivos, diferenciando PDF de texto comum.
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    if ext == '.pdf':
+        print(f"📄 Processando PDF: {os.path.basename(file_path)}...")
         try:
-            response = requests.get(target_url, timeout=15)
-            response.raise_for_status()
+            reader = PdfReader(file_path)
+            full_text = []
             
-            # Regex para encontrar links que terminam em .pdf
-            links = re.findall(r'href=["\'](.*?\.pdf)["\']', response.text, re.IGNORECASE)
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    full_text.append(text)
             
-            for link in links:
-                # Converte links relativos em URLs completas
-                full_url = urljoin(target_url, link)
-                pdf_links.append(full_url)
-                
-            return list(set(pdf_links)) # Remove duplicados
+            return "\n".join(full_text)
+            
         except Exception as e:
-            print(f"[!] Erro ao extrair links: {e}")
-            return []
+            print(f"⚠️ Erro ao ler PDF (pode estar criptografado ou corrompido): {e}")
+            return ""
+    
+    else:
+        # Comportamento original para .txt, .html, etc.
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                return f.read()
+        except Exception as e:
+            print(f"⚠️ Erro ao ler arquivo de texto: {e}")
+            return ""
