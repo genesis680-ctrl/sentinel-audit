@@ -1,61 +1,40 @@
 import sys
+import os
 from engine.processor import DocumentProcessor
 from reports.generator import ReportGenerator
-from utils.network import NetworkManager
-from utils.extractor import LinkExtractor
 
-def audit_target(target, processor):
-    """Funcao auxiliar para auditar um unico alvo (local ou URL)."""
-    TEMP_FILE = 'tmp_audit_target.pdf' if target.endswith('.pdf') else 'tmp_audit_target.txt'
-    
-    if target.startswith("http"):
-        if not NetworkManager.download_file(target, TEMP_FILE):
-            return None
-        target_name = target
-    else:
-        TEMP_FILE = target
-        target_name = target
+def main():
+    # 1. Verificação de Entrada
+    if len(sys.argv) < 2:
+        print("❌ Uso correto: python main.py [ARQUIVO_PARA_AUDITAR]")
+        print("Exemplo: python main.py leak_test.txt")
+        return
 
-    results = processor.scan_file(TEMP_FILE)
-    
-    if target.startswith("http") and target != 'leak_test.txt':
-        NetworkManager.cleanup(TEMP_FILE)
-        
-    return results, target_name
+    target_file = sys.argv[1]
 
-def run_suite(initial_target):
-    print(f"--- SENTINEL AUDIT: MODO HUNTER ATIVADO ---")
-    processor = DocumentProcessor('rules/patterns.json')
-    all_findings = []
+    # 2. Validação se o arquivo existe
+    if not os.path.exists(target_file):
+        print(f"❌ Erro: O arquivo '{target_file}' não foi encontrado.")
+        return
 
-    # Se o alvo for um site (sem ser PDF direto), extrai os links primeiro
-    if initial_target.startswith("http") and not initial_target.lower().endswith(".pdf"):
-        links = LinkExtractor.get_pdf_links(initial_target)
-        print(f"[+] Encontrados {len(links)} PDFs para auditoria.")
-        
-        for link in links:
-            res, name = audit_target(link, processor)
-            if res:
-                for r in res:
-                    r['source'] = name
-                    all_findings.append(r)
-    else:
-        # Auditoria de alvo unico (Arquivo ou PDF direto)
-        res, name = audit_target(initial_target, processor)
-        if res:
-            for r in res:
-                r['source'] = name
-                all_findings.append(r)
+    print(f"🔄 Iniciando auditoria em: {target_file}...")
 
-    # Geracao de Relatorio Consolidado
-    if not all_findings:
-        print("[-] Nenhum vazamento detectado na varredura.")
-    else:
-        print(f"[!] ALERTA: {len(all_findings)} vulnerabilidades encontradas no total!")
-        reporter = ReportGenerator(target_name=initial_target)
-        report_path = reporter.save_report(reporter.generate_markdown(all_findings))
-        print(f"[+] SUCESSO: Relatorio consolidado em: {report_path}")
+    # 3. Processamento (Busca e Validação)
+    try:
+        processor = DocumentProcessor('rules/patterns.json')
+        findings = processor.scan_file(target_file)
+        print(f"✅ Processamento concluído. Vulnerabilidades encontradas: {len(findings)}")
+    except Exception as e:
+        print(f"❌ Erro crítico no motor: {str(e)}")
+        return
+
+    # 4. Geração de Relatório
+    try:
+        generator = ReportGenerator()
+        report_path = generator.generate(findings, source_name=target_file)
+        print(f"\n📄 Relatório disponível em:\n   👉 {report_path}")
+    except Exception as e:
+        print(f"❌ Erro ao gerar relatório: {str(e)}")
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else 'leak_test.txt'
-    run_suite(target)
+    main()
