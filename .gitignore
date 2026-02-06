@@ -1,0 +1,13 @@
+# Python: arquivos de cache (lixo de processamento)
+__pycache__/
+*.pyc
+
+# Dados de teste locais (para não expor seus testes)
+leak_test.txt
+tmp_*
+
+# Relatórios gerados (melhor manter o GitHub apenas com o código)
+relatórios/*.md
+
+# Configurações sensíveis (Tokens do Telegram, etc)
+.env
