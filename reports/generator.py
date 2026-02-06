@@ -1,42 +1,76 @@
+import os
 from datetime import datetime
 
 class ReportGenerator:
-    def __init__(self, target_name):
-        self.target_name = target_name
-        self.timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def __init__(self, output_dir="reports"):
+        self.output_dir = output_dir
+        # Garante que a pasta existe
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-    def generate_markdown(self, findings):
-        """Cria um relatorio tecnico em formato Markdown."""
-        report_lines = [
-            f"# RELATÓRIO TÉCNICO DE AUDITORIA DE DADOS",
-            f"**Alvo:** {self.target_name}",
-            f"**Data da Varredura:** {self.timestamp}",
-            f"**Status:** Alerta de Violação de LGPD",
-            "\n---",
-            "\n## 1. Sumário Executivo",
-            f"Durante a execução da auditoria automatizada, foram identificadas {len(findings)} ocorrências de dados sensíveis expostos em conformidade com os padrões da Lei Geral de Proteção de Dados (LGPD).",
-            "\n## 2. Detalhes das Ocorrências",
-            "| Tipo | Dado Mascarado | Impressão Digital (SHA-256) |",
-            "| :--- | :--- | :--- |"
-        ]
+    def generate(self, findings, source_name="Auditoria_Manual"):
+        """
+        Gera um relatório Markdown profissional baseado nos achados.
+        """
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"Relatorio_Sentinela_{timestamp}.md"
+        filepath = os.path.join(self.output_dir, filename)
 
-        for item in findings:
-            report_lines.append(f"| {item['type']} | {item['masked']} | `{item['fingerprint'][:32]}...` |")
+        # 1. Estatísticas
+        total_findings = len(findings)
+        by_type = {}
+        for f in findings:
+            tipo = f.get('tipo', 'DESCONHECIDO')
+            by_type[tipo] = by_type.get(tipo, 0) + 1
 
-        report_lines.extend([
-            "\n## 3. Recomendações Técnicas",
-            "1. **Remediação Imediata:** Remover ou anonimizar os dados identificados no arquivo fonte.",
-            "2. **Revisão de Governança:** Avaliar o processo de publicação de documentos para implementar filtros preventivos.",
-            "3. **Auditoria de Log:** Verificar quem acessou este documento desde a sua publicação.",
-            "\n---",
-            "\n*Este relatório foi gerado automaticamente pelo Sentinel Audit Framework.*"
-        ])
+        # 2. Construção do Conteúdo Markdown
+        md_content = f"""# 🛡️ Relatório de Auditoria Sentinela
 
-        return "\n".join(report_lines)
+**Data de Geração:** {datetime.now().strftime("%d/%m/%Y às %H:%M")}
+**Fonte Auditada:** `{source_name}`
+**Status:** {"🔴 CRÍTICO" if total_findings > 0 else "🟢 SEGURO"}
 
-    def save_report(self, content, filename="RELATORIO_AUDITORIA.md"):
-        """Salva o conteudo em um arquivo na pasta de relatorios."""
-        path = f"reports/{filename}"
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
-        return path
+---
+
+## 📊 Resumo Executivo
+O sistema **Auditoria Sentinela** realizou uma varredura automatizada em busca de Dados Pessoais Sensíveis (PII) em conformidade com a LGPD.
+
+* **Total de Vulnerabilidades:** {total_findings}
+* **Tipos Detectados:**
+"""
+        
+        for tipo, count in by_type.items():
+            md_content += f"    * **{tipo}:** {count} ocorrências\n"
+
+        if total_findings == 0:
+            md_content += "\n✅ **Nenhuma não-conformidade foi detectada nesta amostra.**\n"
+        else:
+            md_content += f"""
+---
+
+## 🔍 Detalhamento Técnico
+Abaixo estão listados os registros anonimizados para validação.
+
+| Tipo | Dado Mascarado | Hash de Verificação (SHA-256) |
+| :--- | :--- | :--- |
+"""
+            for f in findings:
+                md_content += f"| {f['tipo']} | `{f['masked']}` | `{f['hash'][:16]}...` |\n"
+
+            md_content += """
+---
+
+## ⚠️ Recomendações de Segurança
+1.  **Remoção Imediata:** Os documentos listados acima contêm dados expostos e devem ser retirados de circulação pública imediatamente.
+2.  **Revisão de Processos:** Verificar o fluxo de publicação que permitiu a exposição desses dados.
+3.  **Notificação:** Avaliar a necessidade de notificar os titulares conforme Art. 48 da LGPD.
+
+---
+*Gerado automaticamente pelo framework Auditoria Sentinela v1.0*
+"""
+
+        # 3. Salvar Arquivo
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(md_content)
+            
+        return filepath
